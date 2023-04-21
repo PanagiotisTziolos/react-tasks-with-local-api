@@ -1,53 +1,109 @@
-import { useState } from 'react' // state hook
+import { useState, useEffect } from 'react' // state hook
+
 import './App.css';
+
 import Task from './components/Task'
 
-const initialTasks = [
- { id: 1, text: 'Go shopping', completed: false },
- { id: 2, text: 'Work out', completed: false },
- { id: 3, text: 'See the doctor', completed: true }
-]
-let id = initialTasks.length
 
 function App() {
-  const [tasks, setTasks] = useState(initialTasks)
+  const [tasks, setTasks] = useState([])
 
-  const handleSubmit = (event) => {
+  // make a GET HTTP Request to /tasks and then show the data
+
+  // 1. effect Hook
+  useEffect(() => {
+    // 2. fetch
+    fetch('http://localhost:3030/tasks')
+      // promise syntax
+      .then(res => res.json())
+      .then(data => setTasks(data))
+  }, [])
+
+  const handleSubmit = async (event) => {
     // prevent default behaviour of event (in this case form submission event causes page to reload)
     event.preventDefault()
-    id++
     // get value from first element within element that caused submission event
     const text = event.target[0].value
     // create a new task with the correct data
     const newTask = {
-      id: id,
       text: text,
       completed: false
     }
-    // create new state
-    const newTasks = [...tasks, newTask]
-    // tell react to update state & rerender
-    setTasks(newTasks)
+
+    // fetch() returns a Response object as a promise 
+    // (asynchronous operation)
+    // .json() returns the body of the response as a promise
+
+    // make a POST HTTP request to /tasks to add the new task
+    /*
+      fetch('http://localhost:3030/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newTask)
+      })
+        .then(res => res.json())
+        .then(data => setTasks([...tasks, data]))
+    */
+
+    // OR using the async/await 
+    
+      // wait till the fetch is completed
+      const response = await fetch('http://localhost:3030/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newTask)
+      })
+
+      // wait till the body of the response is fetched
+      const newData = await response.json()
+
+      // add the new data to the array
+      setTasks([...tasks, newData])
+    
+    // reset the value of the inpuy field
+    event.target[0].value = ''
   }
 
-  const updateTasks = (taskId, value) => {
-    // find the task
-    // create a new array with the updated task
-    const updatedTasks = tasks.map(task => {
-      if (task.id === taskId) {
-        task.completed = value
-      }
-      return task
+  const updateTasks = async (taskId, value) => {
+    // update the task in the db.json
+    // make a PATCH HTTP request to update the 
+    // completed property of the task with an 
+    // id equal to taskId
+
+    await fetch(`http://localhost:3030/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        completed: value
+      })
     })
-    setTasks(updatedTasks)
+
+    // then make a GET HTTP request to get the updated data
+    const getRes = await fetch('http://localhost:3030/tasks')
+    const newData = await getRes.json()
+
+    setTasks(newData)
   }
 
-  const deleteTask = (taskId) => {
+  const deleteTask = async (taskId) => {
+    // make a DELETE HTTP request to delete the task
+    // with an id equal to taskId
 
-    const filteredTasks = tasks.filter(item => item.id !== taskId)
-    // find the task
-    // remove it from the array of tasks
-    setTasks(filteredTasks)
+    await fetch(`http://localhost:3030/tasks/${taskId}`, {
+      method: 'DELETE'
+    })
+
+    // make a GET HTTP request to get the updated tasks
+    const getRes = await fetch('http://localhost:3030/tasks')
+    const newData = await getRes.json()
+
+    setTasks(newData)
   }
 
   return (
